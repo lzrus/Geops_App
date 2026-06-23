@@ -9,7 +9,8 @@ import {
   ShoppingCart,
   Package,
   Receipt,
-  TrendingUp
+  TrendingUp,
+  Users
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -22,6 +23,7 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
     { id: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
     { id: 'caisse', label: 'Caisse / Ventes', icon: ShoppingCart },
     { id: 'stock', label: 'Stock & Articles', icon: Package },
+    { id: 'users', label: 'Utilisateurs', icon: Users },
     { id: 'expenses', label: 'Dépenses & Charges', icon: Receipt },
   ];
 
@@ -31,7 +33,7 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
       <div className="flex h-16 items-center px-6 border-b border-slate-100 gap-2.5">
         <TrendingUp className="h-5 w-5 text-slate-900" />
         <div>
-          <h1 className="text-sm font-bold text-slate-900 tracking-wide uppercase">BOUCHERIE PRO</h1>
+          <h1 className="text-sm font-bold text-slate-900 tracking-wide uppercase">GEOPS</h1>
           <p className="text-[9px] font-mono text-slate-400">Système de caisse v1.0</p>
         </div>
       </div>

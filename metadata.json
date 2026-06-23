@@ -1,5 +1,5 @@
 {
-  "name": "Gestion Boucherie Pro",
+  "name": "GEOPS",
   "description": "Application de gestion professionnelle pour boucherie : suivi des ventes, stocks au kilo (kg), dépenses, recettes et gestion de caisse.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

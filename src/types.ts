@@ -85,3 +85,12 @@ export interface DashboardStats {
   stockValuationPurchase: number;
   stockValuationSelling: number;
 }
+
+export interface User {
+  id: string;
+  username: string;
+  fullName: string;
+  role: 'admin' | 'manager' | 'user';
+  isActive: boolean;
+  createdAt: string;
+}

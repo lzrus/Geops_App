@@ -216,7 +216,7 @@ export default function CaisseView() {
     if (!printedReceipt) return;
     const itemsText = printedReceipt.items.map(it => ` - ${it.productName} : x ${it.quantity} kg | ${Math.round(it.totalPrice).toLocaleString('fr-FR')} FCFA`).join('\n');
     const text = `
-LA GRANDE BOUCHERIE PRO
+GEOPS
 Marché Central - Abidjan - Côte d'Ivoire
 Tél: +225 07 45 87 90 23
 ------------------------------------------
@@ -281,7 +281,7 @@ Merci de votre confiance !
             <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
               <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide flex items-center gap-2">
                 <ShoppingCart className="h-4.5 w-4.5 text-slate-605" />
-                Saisie Facturation Boucherie
+                Saisie Facturation
               </h3>
               <span className="text-[9px] font-mono bg-emerald-55 text-emerald-600 px-2 py-0.5 rounded border border-emerald-100">Prix mappés</span>
             </div>
@@ -634,7 +634,7 @@ Merci de votre confiance !
             <div id="thermal-receipt" className="font-mono text-xs text-left text-slate-800 space-y-4">
               <div className="text-center space-y-1">
                 <p className="text-lg font-bold">🛒</p>
-                <h4 className="font-extrabold text-sm uppercase tracking-wide">LA GRANDE BOUCHERIE PRO</h4>
+                <h4 className="font-extrabold text-sm uppercase tracking-wide">GEOPS</h4>
                 <p className="text-[10px] text-slate-500">
                   Marché Central - Abidjan - Côte d'Ivoire<br />
                   Viandes fraîches de qualité supérieure<br />
@@ -704,7 +704,7 @@ Merci de votre confiance !
               {/* Footer */}
               <div className="text-center space-y-1 text-[9px] text-slate-500 pt-2">
                 <p className="font-semibold uppercase tracking-wider">Merci de votre confiance !</p>
-                <p>Les meilleurs morceaux de boucherie certifiée.</p>
+                <p>Service de qualité professionnelle.</p>
               </div>
             </div>
 

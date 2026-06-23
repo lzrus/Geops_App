@@ -1,9 +1,9 @@
 <div align="center">
-  <img width="1200" height="475" alt="Gestion Boucherie Pro Banner" src="https://via.placeholder.com/1200x475/1e293b/ffffff?text=Gestion+Boucherie+Pro+-+Système+de+Gestion" />
+  <img width="1200" height="475" alt="GEOPS Banner" src="https://via.placeholder.com/1200x475/1e293b/ffffff?text=GEOPS+-+Système+de+Gestion" />
 </div>
 
 <div align="center">
-  <h1>🥩 Gestion Boucherie Pro</h1>
+  <h1>🥩 GEOPS</h1>
   <p>Système de gestion complet pour boucherie</p>
 </div>
 

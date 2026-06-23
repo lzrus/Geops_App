@@ -1,19 +1,57 @@
 /**
- * Backend API Server for Gestion Boucherie Pro
+ * Backend API Server for GEOPS
  * Express server with Prisma ORM for MySQL database
  */
 
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import cors from 'cors';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
 const app = express();
 const PORT = process.env.PORT || 5000;
+const JWT_SECRET = process.env.JWT_SECRET || 'geops-secret-key-change-in-production';
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// ==================== AUTH MIDDLEWARE ====================
+
+// Middleware to verify JWT token
+const authenticateToken = (req: any, res: any, next: any) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Access token required' });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
+    if (err) {
+      return res.status(403).json({ error: 'Invalid token' });
+    }
+    req.user = user;
+    next();
+  });
+};
+
+// Middleware to check user role
+const checkRole = (...allowedRoles: string[]) => {
+  return (req: any, res: any, next: any) => {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+    
+    next();
+  };
+};
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -23,7 +61,7 @@ app.get('/api/health', (req, res) => {
 // ==================== CATEGORIES ====================
 
 // Get all categories
-app.get('/api/categories', async (req, res) => {
+app.get('/api/categories', authenticateToken, async (req: any, res) => {
   try {
     const categories = await prisma.category.findMany({
       orderBy: { name: 'asc' }
@@ -35,7 +73,7 @@ app.get('/api/categories', async (req, res) => {
 });
 
 // Create category
-app.post('/api/categories', async (req, res) => {
+app.post('/api/categories', authenticateToken, checkRole('admin', 'manager'), async (req: any, res) => {
   try {
     const { name, description } = req.body;
     const category = await prisma.category.create({
@@ -48,7 +86,7 @@ app.post('/api/categories', async (req, res) => {
 });
 
 // Update category
-app.put('/api/categories/:id', async (req, res) => {
+app.put('/api/categories/:id', authenticateToken, checkRole('admin', 'manager'), async (req: any, res) => {
   try {
     const { name, description } = req.body;
     const category = await prisma.category.update({
@@ -62,7 +100,7 @@ app.put('/api/categories/:id', async (req, res) => {
 });
 
 // Delete category
-app.delete('/api/categories/:id', async (req, res) => {
+app.delete('/api/categories/:id', authenticateToken, checkRole('admin'), async (req: any, res) => {
   try {
     await prisma.category.delete({
       where: { id: req.params.id }
@@ -76,7 +114,7 @@ app.delete('/api/categories/:id', async (req, res) => {
 // ==================== PRODUCTS ====================
 
 // Get all products
-app.get('/api/products', async (req, res) => {
+app.get('/api/products', authenticateToken, async (req: any, res) => {
   try {
     const products = await prisma.product.findMany({
       include: { category: true },
@@ -89,7 +127,7 @@ app.get('/api/products', async (req, res) => {
 });
 
 // Create product
-app.post('/api/products', async (req, res) => {
+app.post('/api/products', authenticateToken, checkRole('admin', 'manager'), async (req: any, res) => {
   try {
     const { name, barcode, categoryId, stock, minStock, purchasePrice, sellingPrice, provider } = req.body;
     const product = await prisma.product.create({
@@ -111,7 +149,7 @@ app.post('/api/products', async (req, res) => {
 });
 
 // Update product
-app.put('/api/products/:id', async (req, res) => {
+app.put('/api/products/:id', authenticateToken, checkRole('admin', 'manager'), async (req: any, res) => {
   try {
     const { name, barcode, categoryId, stock, minStock, purchasePrice, sellingPrice, provider } = req.body;
     const product = await prisma.product.update({
@@ -134,7 +172,7 @@ app.put('/api/products/:id', async (req, res) => {
 });
 
 // Delete product
-app.delete('/api/products/:id', async (req, res) => {
+app.delete('/api/products/:id', authenticateToken, checkRole('admin'), async (req: any, res) => {
   try {
     await prisma.product.delete({
       where: { id: req.params.id }
@@ -148,7 +186,7 @@ app.delete('/api/products/:id', async (req, res) => {
 // ==================== SALES ====================
 
 // Get all sales
-app.get('/api/sales', async (req, res) => {
+app.get('/api/sales', authenticateToken, async (req: any, res) => {
   try {
     const sales = await prisma.sale.findMany({
       include: { items: true, session: true },
@@ -166,7 +204,7 @@ app.get('/api/sales', async (req, res) => {
 });
 
 // Create sale
-app.post('/api/sales', async (req, res) => {
+app.post('/api/sales', authenticateToken, async (req: any, res) => {
   try {
     const { total, received, change, paymentMethod, items, sessionId } = req.body;
     
@@ -221,7 +259,7 @@ app.post('/api/sales', async (req, res) => {
 });
 
 // Delete/Refund sale
-app.delete('/api/sales/:id', async (req, res) => {
+app.delete('/api/sales/:id', authenticateToken, checkRole('admin', 'manager'), async (req: any, res) => {
   try {
     const sale = await prisma.sale.findUnique({
       where: { id: req.params.id },
@@ -255,7 +293,7 @@ app.delete('/api/sales/:id', async (req, res) => {
 // ==================== EXPENSES ====================
 
 // Get all expenses
-app.get('/api/expenses', async (req, res) => {
+app.get('/api/expenses', authenticateToken, async (req: any, res) => {
   try {
     const expenses = await prisma.expense.findMany({
       orderBy: { date: 'desc' }
@@ -267,7 +305,7 @@ app.get('/api/expenses', async (req, res) => {
 });
 
 // Create expense
-app.post('/api/expenses', async (req, res) => {
+app.post('/api/expenses', authenticateToken, checkRole('admin', 'manager'), async (req: any, res) => {
   try {
     const { category, amount, description, date } = req.body;
     const expense = await prisma.expense.create({
@@ -280,7 +318,7 @@ app.post('/api/expenses', async (req, res) => {
 });
 
 // Delete expense
-app.delete('/api/expenses/:id', async (req, res) => {
+app.delete('/api/expenses/:id', authenticateToken, checkRole('admin'), async (req: any, res) => {
   try {
     await prisma.expense.delete({
       where: { id: req.params.id }
@@ -294,7 +332,7 @@ app.delete('/api/expenses/:id', async (req, res) => {
 // ==================== STOCK ENTRIES ====================
 
 // Get all stock entries
-app.get('/api/stock-entries', async (req, res) => {
+app.get('/api/stock-entries', authenticateToken, async (req: any, res) => {
   try {
     const entries = await prisma.stockEntry.findMany({
       include: { product: true },
@@ -307,7 +345,7 @@ app.get('/api/stock-entries', async (req, res) => {
 });
 
 // Create stock entry
-app.post('/api/stock-entries', async (req, res) => {
+app.post('/api/stock-entries', authenticateToken, checkRole('admin', 'manager'), async (req: any, res) => {
   try {
     const { productId, productName, quantityAdded, purchasePrice, provider } = req.body;
     
@@ -333,10 +371,162 @@ app.post('/api/stock-entries', async (req, res) => {
   }
 });
 
+// ==================== USERS ====================
+
+// Login endpoint
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    console.log('Login attempt for username:', username);
+
+    const user = await prisma.user.findUnique({
+      where: { username }
+    });
+
+    if (!user || !user.isActive) {
+      console.log('User not found or inactive');
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+      console.log('Invalid password');
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const token = jwt.sign(
+      { userId: user.id, username: user.username, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    console.log('Login successful for user:', username);
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        fullName: user.fullName,
+        role: user.role,
+        isActive: user.isActive
+      }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed', details: error.message });
+  }
+});
+
+// Get all users (admin only)
+app.get('/api/users', authenticateToken, checkRole('admin'), async (req: any, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: {
+        id: true,
+        username: true,
+        fullName: true,
+        role: true,
+        isActive: true,
+        createdAt: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// Create user (admin only)
+app.post('/api/users', authenticateToken, checkRole('admin'), async (req: any, res) => {
+  try {
+    const { username, password, fullName, role } = req.body;
+
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { username }
+    });
+
+    if (existingUser) {
+      return res.status(400).json({ error: 'Username already exists' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await prisma.user.create({
+      data: {
+        username,
+        password: hashedPassword,
+        fullName,
+        role: role || 'user'
+      },
+      select: {
+        id: true,
+        username: true,
+        fullName: true,
+        role: true,
+        isActive: true,
+        createdAt: true
+      }
+    });
+
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create user' });
+  }
+});
+
+// Update user (admin only)
+app.put('/api/users/:id', authenticateToken, checkRole('admin'), async (req: any, res) => {
+  try {
+    const { fullName, role, isActive, password } = req.body;
+    const updateData: any = {
+      fullName,
+      role,
+      isActive
+    };
+
+    if (password) {
+      updateData.password = await bcrypt.hash(password, 10);
+    }
+
+    const user = await prisma.user.update({
+      where: { id: req.params.id },
+      data: updateData,
+      select: {
+        id: true,
+        username: true,
+        fullName: true,
+        role: true,
+        isActive: true,
+        createdAt: true
+      }
+    });
+
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+// Delete user (admin only)
+app.delete('/api/users/:id', authenticateToken, checkRole('admin'), async (req: any, res) => {
+  try {
+    await prisma.user.delete({
+      where: { id: req.params.id }
+    });
+    res.json({ message: 'User deleted' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
+});
+
 // ==================== SESSIONS ====================
 
 // Get all sessions
-app.get('/api/sessions', async (req, res) => {
+app.get('/api/sessions', authenticateToken, async (req: any, res) => {
   try {
     const sessions = await prisma.session.findMany({
       include: { sales: true },
@@ -349,7 +539,7 @@ app.get('/api/sessions', async (req, res) => {
 });
 
 // Create session
-app.post('/api/sessions', async (req, res) => {
+app.post('/api/sessions', authenticateToken, checkRole('admin', 'manager'), async (req: any, res) => {
   try {
     const { date, openingBalance } = req.body;
     const session = await prisma.session.create({
@@ -365,7 +555,7 @@ app.post('/api/sessions', async (req, res) => {
 });
 
 // Close session
-app.put('/api/sessions/:id/close', async (req, res) => {
+app.put('/api/sessions/:id/close', authenticateToken, checkRole('admin', 'manager'), async (req: any, res) => {
   try {
     const { closingBalance, notes } = req.body;
     const session = await prisma.session.update({

@@ -8,6 +8,37 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
+// Start the backend Express server in production
+const isDev = process.env.NODE_ENV === 'development';
+if (!isDev) {
+  // Set SQLite database path in AppData/Roaming/geops
+  const dbPath = path.join(app.getPath('userData'), 'geops.db');
+  process.env.DATABASE_URL = `file:${dbPath}`;
+
+  // Copy template database if it doesn't exist
+  if (!fs.existsSync(dbPath)) {
+    try {
+      const templateDbPath = path.join(app.getAppPath(), 'prisma/dev.db');
+      const dbDir = path.dirname(dbPath);
+      if (!fs.existsSync(dbDir)) {
+        fs.mkdirSync(dbDir, { recursive: true });
+      }
+      fs.copyFileSync(templateDbPath, dbPath);
+      console.log('SQLite database initialized at:', dbPath);
+    } catch (err) {
+      console.error('Failed to copy SQLite database:', err);
+    }
+  }
+
+  // Require the compiled Express server
+  try {
+    require(path.join(app.getAppPath(), 'dist-server/server.js'));
+    console.log('Backend Express server started in production.');
+  } catch (err) {
+    console.error('Failed to start backend Express server:', err);
+  }
+}
+
 let mainWindow;
 
 function createWindow() {

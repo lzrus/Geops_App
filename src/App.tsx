@@ -9,17 +9,37 @@ import DashboardView from './components/DashboardView';
 import CaisseView from './components/CaisseView';
 import StockView from './components/StockView';
 import ExpensesView from './components/ExpensesView';
+import UsersView from './components/UsersView';
+import LoginScreen from './components/LoginScreen';
 import { useAppStore } from './store/useAppStore';
+import { LogOut } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const fetchData = useAppStore((state) => state.fetchData);
+  const currentUser = useAppStore((state) => state.currentUser);
   const isLocked = useAppStore((state) => state.isLocked);
   const unlock = useAppStore((state) => state.unlock);
+  const logout = useAppStore((state) => state.logout);
 
   useEffect(() => {
-    fetchData();
+    // Check for existing session
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
+    if (token && user) {
+      useAppStore.setState({
+        currentUser: JSON.parse(user),
+        token,
+        isLocked: false
+      });
+      fetchData();
+    }
   }, [fetchData]);
+
+  // Show login screen if not authenticated
+  if (!currentUser) {
+    return <LoginScreen />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50/60 text-slate-900">
@@ -34,12 +54,19 @@ export default function App() {
           </div>
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <p className="text-xs font-bold text-slate-900">Gérant Principal</p>
-              <p className="text-[10px] text-slate-400 font-medium">Session Active</p>
+              <p className="text-xs font-bold text-slate-900">{currentUser.fullName}</p>
+              <p className="text-[10px] text-slate-400 font-medium">{currentUser.role === 'admin' ? 'Administrateur' : currentUser.role === 'manager' ? 'Gestionnaire' : 'Utilisateur'}</p>
             </div>
             <div className="h-8 w-8 rounded-full bg-slate-800 text-white font-bold flex items-center justify-center text-xs border border-slate-800/10">
-              GP
+              {currentUser.fullName.split(' ').map((n: string) => n[0]).join('').toUpperCase()}
             </div>
+            <button
+              onClick={logout}
+              className="p-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              title="Déconnexion"
+            >
+              <LogOut className="h-5 w-5" />
+            </button>
           </div>
         </header>
 
@@ -49,6 +76,7 @@ export default function App() {
           {activeTab === 'caisse' && <CaisseView />}
           {activeTab === 'stock' && <StockView />}
           {activeTab === 'expenses' && <ExpensesView />}
+          {activeTab === 'users' && currentUser.role === 'admin' && <UsersView />}
         </div>
 
         {/* Global sticky footer */}

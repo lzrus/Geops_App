@@ -8,11 +8,19 @@ const API_BASE_URL = 'http://localhost:5000/api';
 // Generic fetch wrapper
 async function fetchAPI(endpoint: string, options: RequestInit = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
+  const token = localStorage.getItem('token');
+  
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
   const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
+    headers,
     ...options,
   });
 
@@ -98,5 +106,42 @@ export const sessionsAPI = {
   close: (id: string, data: any) => fetchAPI(`/sessions/${id}/close`, {
     method: 'PUT',
     body: JSON.stringify(data),
+  }),
+};
+
+// Auth API
+export const authAPI = {
+  login: (username: string, password: string) => fetchAPI('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ username, password }),
+  }),
+};
+
+// Users API
+export const usersAPI = {
+  getAll: (token: string) => fetchAPI('/users', {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  }),
+  create: (token: string, data: any) => fetchAPI('/users', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  }),
+  update: (token: string, id: string, data: any) => fetchAPI(`/users/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  }),
+  delete: (token: string, id: string) => fetchAPI(`/users/${id}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
   }),
 };

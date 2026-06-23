@@ -1,0 +1,128 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// 1. Modèle Catégorie (Categories)
+model Category {
+  id          String    @id @default(uuid())
+  name        String    @unique
+  description String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// 2. Modèle Produit (Products)
+model Product {
+  id            String         @id @default(uuid())
+  name          String
+  barcode       String?        @unique // Code-barre pour scannage rapide
+  categoryId    String
+  category      Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  stock         Int            @default(0) // Quantité actuelle disponible
+  minStock      Int            @default(5) // Seuil d'alerte critique
+  purchasePrice Float // Prix d'achat unitaire (pour calcul marge)
+  sellingPrice  Float // Prix de vente unitaire
+  provider      String? // Nom du fournisseur par défaut
+  saleItems     SaleItem[] // Ventes liées à ce produit
+  stockEntries  StockEntry[] // Approvisionnements historiques
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([categoryId])
+  @@index([barcode])
+}
+
+// 3. Modèle Vente (Sales)
+model Sale {
+  id            String     @id @default(uuid())
+  saleNumber    String     @unique // Numéro incrémental unique (ex: VEN-1004)
+  total         Float // Montant total de la transaction
+  received      Float // Montant encaissé lors du règlement
+  change        Float // Monnaie restituée
+  paymentMethod String     @default("Espèces") // Espèces, Carte, Mobile Money, Transfert
+  items         SaleItem[] // Lignes de ventes associées
+  sessionId     String? // Cession journalière liée
+  session       Session?   @relation(fields: [sessionId], references: [id])
+  createdAt     DateTime   @default(now())
+
+  @@index([sessionId])
+}
+
+// 4. Modèle Ligne de Vente (Sale item detail)
+model SaleItem {
+  id          String   @id @default(uuid())
+  saleId      String
+  sale        Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productName String // Copie du nom à l'instant T de la vente (archivage)
+  quantity    Int
+  unitPrice   Float
+  totalPrice  Float
+  createdAt   DateTime @default(now())
+
+  @@index([saleId])
+  @@index([productId])
+}
+
+// 5. Modèle Entrée Stock (Stock Replenishment)
+model StockEntry {
+  id            String   @id @default(uuid())
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productName   String
+  quantityAdded Int
+  purchasePrice Float
+  provider      String?
+  createdAt     DateTime @default(now())
+
+  @@index([productId])
+}
+
+// 6. Modèle Dépense commerciale (Expenses)
+model Expense {
+  id          String   @id @default(uuid())
+  category    String // Loyer, Factures, Consommables, Salaires, Autres
+  amount      Float
+  description String
+  date        String // Format YYYY-MM-DD
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([date])
+}
+
+// 7. Modèle Utilisateur (User authentication)
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String   // Mot de passe hashé (bcrypt)
+  fullName  String   // Nom complet de l'utilisateur
+  role      String   @default("user") // "admin", "manager", "user"
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// 8. Modèle Session de Caisse (Daily Cash session)
+model Session {
+  id             String    @id @default(uuid())
+  date           String // Format YYYY-MM-DD
+  openingBalance Float // Fond de caisse initial
+  closingBalance Float? // Fond de caisse final
+  expectedBalance Float? // Fond attendu en espèces calculé
+  notes          String? // Commentaires libres sur écarts
+  isClosed       Boolean   @default(false)
+  sales          Sale[]
+  openedAt       DateTime  @default(now())
+  closedAt       DateTime?
+}

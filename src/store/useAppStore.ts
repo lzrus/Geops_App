@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import { Category, Product, Sale, SaleItem, StockEntry, Expense, DailySession } from '../types';
+import { Category, Product, Sale, SaleItem, StockEntry, Expense, DailySession, User } from '../types';
 import * as api from '../services/api';
 
 interface AppState {
@@ -14,7 +14,9 @@ interface AppState {
   expenses: Expense[];
   stockEntries: StockEntry[];
   sessions: DailySession[];
-  passwordHash: string;
+  users: User[];
+  currentUser: User | null;
+  token: string | null;
   isLocked: boolean;
   currentSessionId: string | null;
   isLoading: boolean;
@@ -47,10 +49,17 @@ interface AppState {
   openSession: (openingBalance: number) => Promise<void>;
   closeSession: (closingBalance: number, notes?: string) => Promise<void>;
 
+  // User Management
+  login: (username: string, password: string) => Promise<boolean>;
+  logout: () => void;
+  fetchUsers: () => Promise<void>;
+  addUser: (username: string, password: string, fullName: string, role: 'admin' | 'manager' | 'user') => Promise<void>;
+  updateUser: (id: string, data: any) => Promise<void>;
+  deleteUser: (id: string) => Promise<void>;
+
   // Auth / Security
   unlock: (password: string) => boolean;
   lock: () => void;
-  changePassword: (oldP: string, newP: string) => boolean;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -60,7 +69,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   expenses: [],
   stockEntries: [],
   sessions: [],
-  passwordHash: 'admin',
+  users: [],
+  currentUser: null,
+  token: null,
   isLocked: true,
   currentSessionId: null,
   isLoading: false,
@@ -306,10 +317,85 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  // Auth actions
+  // User Management
+  login: async (username, password) => {
+    try {
+      const response = await api.authAPI.login(username, password);
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('user', JSON.stringify(response.user));
+      set({ 
+        currentUser: response.user, 
+        token: response.token,
+        isLocked: false 
+      });
+      return true;
+    } catch (error) {
+      console.error('Login failed:', error);
+      return false;
+    }
+  },
+
+  logout: () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    set({ 
+      currentUser: null, 
+      token: null,
+      isLocked: true 
+    });
+  },
+
+  fetchUsers: async () => {
+    const { token } = get();
+    if (!token) return;
+    try {
+      const users = await api.usersAPI.getAll(token);
+      set({ users });
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+    }
+  },
+
+  addUser: async (username, password, fullName, role) => {
+    const { token } = get();
+    if (!token) return;
+    try {
+      const newUser = await api.usersAPI.create(token, { username, password, fullName, role });
+      set((state) => ({ users: [...state.users, newUser] }));
+    } catch (error) {
+      console.error('Failed to add user:', error);
+    }
+  },
+
+  updateUser: async (id, data) => {
+    const { token } = get();
+    if (!token) return;
+    try {
+      const updatedUser = await api.usersAPI.update(token, id, data);
+      set((state) => ({
+        users: state.users.map((u) => (u.id === id ? updatedUser : u)),
+      }));
+    } catch (error) {
+      console.error('Failed to update user:', error);
+    }
+  },
+
+  deleteUser: async (id) => {
+    const { token } = get();
+    if (!token) return;
+    try {
+      await api.usersAPI.delete(token, id);
+      set((state) => ({ users: state.users.filter((u) => u.id !== id) }));
+    } catch (error) {
+      console.error('Failed to delete user:', error);
+    }
+  },
+
+  // Auth / Security
   unlock: (password) => {
-    const { passwordHash } = get();
-    if (password === passwordHash) {
+    const { currentUser } = get();
+    // For now, use a simple PIN for unlock
+    if (password === '1234') {
       set({ isLocked: false });
       return true;
     }
@@ -318,14 +404,5 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   lock: () => {
     set({ isLocked: true });
-  },
-
-  changePassword: (oldP, newP) => {
-    const { passwordHash } = get();
-    if (oldP === passwordHash) {
-      set({ passwordHash: newP });
-      return true;
-    }
-    return false;
   },
 }));

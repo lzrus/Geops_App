@@ -1,0 +1,29 @@
+{
+  "appId": "com.geops.app",
+  "productName": "GEOPS",
+  "npmRebuild": false,
+  "nodeGypRebuild": false,
+  "buildDependenciesFromSource": false,
+  "directories": {
+    "output": "dist-electron"
+  },
+  "files": [
+    "dist/**/*",
+    "dist-server/**/*",
+    "electron/**/*",
+    "node_modules/**/*",
+    "prisma/prisma/dev.db",
+    "package.json"
+  ],
+  "asar": false,
+  "win": {
+    "target": "nsis"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "GEOPS"
+  }
+}

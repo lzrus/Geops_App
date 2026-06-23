@@ -1,7 +1,5 @@
-node_modules
-dist
-build
-.prisma
-.env
-.env.local
+node_modules/
+dist-electron/
+dist-server/
+prisma/prisma/dev.db
 *.log
